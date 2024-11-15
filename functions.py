@@ -260,3 +260,35 @@ def get_edges_with_window(df, date, radius, n, k):
     result = filter_edges_by_window(edges_dict, n, k)
     return result
 
+
+def build_network(df, date, radius, window_minutes):
+    # Step 1: Ottieni le connessioni (edges) per la data specificata e raggio dato
+    edges_dict = get_edges(df, date, radius)
+    
+    # Step 2: Raggruppa le connessioni per finestre temporali 
+    # Converti gli orari in datetime per suddividere in finestre temporali
+    time_df = pd.DataFrame({'time': pd.to_datetime(list(edges_dict.keys()), format='%H:%M')})
+    time_df['window'] = (time_df['time'].dt.hour * 60 + time_df['time'].dt.minute) // window_minutes
+    time_to_window = dict(zip(time_df['time'].dt.strftime('%H:%M'), time_df['window']))
+    
+    # Organizza le connessioni per finestra temporale
+    window_edges = defaultdict(list)
+    for time, edges in edges_dict.items():
+        window = time_to_window.get(time)
+        if window is not None:
+            window_edges[window].extend(edges)
+    
+    # Step 3: Crea i grafi per ogni finestra temporale
+    networks = {}
+    for window, edges in window_edges.items():
+        # Crea un grafo per la finestra corrente
+        G = nx.Graph()
+        
+        # Aggiungi gli archi al grafo (senza pesi)
+        G.add_edges_from(edges)
+        
+        # Nome della finestra temporale per leggibilità
+        window_range = f"{(window * window_minutes) // 60:02}:{(window * window_minutes) % 60:02} - {((window + 1) * window_minutes) // 60:02}:{((window + 1) * window_minutes) % 60:02}"
+        networks[window_range] = G
+
+    return networks

@@ -8,6 +8,8 @@ from matplotlib import pyplot as plt
 import ast
 from PIL import Image
 import datetime
+from collections import defaultdict
+import requests
 
 def get_distance(position1, position2):
     """
@@ -80,9 +82,6 @@ def get_edges(df, date, radius):
 
     # Return dictionary containing all edges organized by time
     return edges_dict
-
-import requests
-import time
 
 def fetch_wearables_from_user(user_id):
     """
@@ -157,4 +156,107 @@ def fetch_wearables(addresses):
         print(f' {time.time() - t0:.2f} s')  # Print time taken for the current fetch
     
     return wearables  # Return the complete wearables dictionary
+
+def filter_edges_by_window(edge_dict, n, k):
+    """
+    Groups edges into temporal windows of n minutes and filters edges
+    that occur more than k times in a given window.
+    
+    Parameters:
+        edge_dict (dict): Keys are rounded times (HH:MM), values are lists of edges (tuples of ids).
+        n (int): Size of the temporal window in minutes.
+        k (int): Minimum frequency for an edge to be included in the window.
+    
+    Returns:
+        dict: Keys are window ranges (start-end), values are filtered edges (lists of tuples).
+    """
+    # Convert rounded times to datetime for easier manipulation
+    time_df = pd.DataFrame({'time': pd.to_datetime(list(edge_dict.keys()), format='%H:%M')})
+    time_df['window'] = (time_df['time'].dt.hour * 60 + time_df['time'].dt.minute) // n  # Group into windows
+    
+    # Map rounded times to windows
+    time_to_window = dict(zip(time_df['time'].dt.strftime('%H:%M'), time_df['window']))
+    
+    # Initialize a dictionary to store filtered edges for each window
+    window_edges = defaultdict(list)
+    
+    for time, edges in edge_dict.items():
+        window = time_to_window.get(time)
+        if window is not None:
+            window_edges[window].extend(edges)
+    
+    # Count and filter edges in each window
+    result = {}
+    for window, edges in window_edges.items():
+        edge_counts = defaultdict(int)
+        for edge in edges:
+            edge_counts[tuple(sorted(edge))] += 1  # Count edge occurrences
+        
+        # Filter edges that occur more than k times
+        filtered_edges = [edge for edge, count in edge_counts.items() if count > k]
+        if filtered_edges:
+            window_range = f"{(window * n) // 60:02}:{(window * n) % 60:02} - {((window + 1) * n) // 60:02}:{((window + 1) * n) % 60:02}"
+            result[window_range] = filtered_edges
+    
+    return result
+
+
+def get_edges_with_window(df, date, radius, n, k):
+
+    """
+    Identifies pairs of users ("edges") within a specified distance radius at each time step for a given date.
+
+    Parameters:
+    - df: DataFrame with columns 'id', 'date', 'rounded_time', 'position'.
+    - date: Date to filter data.
+    - radius: Maximum distance between users to create an edge.
+
+    Returns:
+    - dict: Keys are window ranges (start-end), values are filtered edges (lists of tuples).
+    """
+
+    # Filter the DataFrame for rows matching the specified date
+    df = df[df['date'] == date]
+
+    # Get a list of unique rounded times for the given date
+    rounded_times = df['rounded_time'].unique()
+    edges_dict = {}  # Initialize an empty dictionary to store edges for each time
+
+    # Iterate through each unique time to evaluate connections at that time
+    for time in rounded_times:
+        print(f'Time = {time}')
+        
+        # Filter the DataFrame to include only entries for the current time
+        df_tmp = df[df['rounded_time'] == time]
+        
+        # Extract unique player IDs active at the current time
+        unique_ids = df_tmp['id'].unique()
+        print(f'Active players: {len(unique_ids)}')
+        
+        edges_tmp = []  # Temporary list to store edges for the current time
+
+        # Skip if less than 2 players are active (no possible edges)
+        if len(unique_ids) < 2:
+            pass
+        
+        # Iterate over pairs of unique player IDs
+        for i in range(len(unique_ids)):
+            for j in range(i + 1, len(unique_ids)):
+                
+                # Get positions for the two players and calculate their distance
+                pos1 = df_tmp[df_tmp['id'] == unique_ids[i]]['position'].tolist()[0]
+                pos2 = df_tmp[df_tmp['id'] == unique_ids[j]]['position'].tolist()[0]
+                
+                # If distance is below the specified radius, create an edge
+                if get_distance(pos1, pos2) < radius:
+                    edges_tmp.append([unique_ids[i], unique_ids[j]])
+
+        print(f'Edges created: {len(edges_tmp)}\n')
+        
+        # Add the edges list for the current time to the dictionary
+        edges_dict[time] = edges_tmp
+
+    # Return dictionary containing all edges organized by time
+    result = filter_edges_by_window(edges_dict, n, k)
+    return result
 

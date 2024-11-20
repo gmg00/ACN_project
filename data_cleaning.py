@@ -23,7 +23,7 @@ days_minutes_per_id = pd.merge(unique_days_per_id, minutes_per_id, on='id')
 
 days_minutes_per_id.columns = ['id', 'days', 'minutes']
 
-selected_ids = days_minutes_per_id[(days_minutes_per_id['days']>4) & (days_minutes_per_id['minutes']>30)]['id'].tolist()
+selected_ids = days_minutes_per_id[(days_minutes_per_id['days']>5) & (days_minutes_per_id['minutes']>30)]['id'].tolist()
 
 new_df = df[df['id'].isin(selected_ids)]
 output_csv = 'cleaned_decentraland.csv'

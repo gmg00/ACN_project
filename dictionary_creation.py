@@ -11,12 +11,17 @@ data_dict = defaultdict(lambda: defaultdict(lambda: {"users": [], "user_count": 
 def extract_datetime(datetime_str):
     return datetime_str[:16]  # Primo 16 caratteri (YYYY-MM-DD HH:MM)
 
-with open('clean_decentraland.csv', 'r', encoding='utf-8') as file:
+with open('carlo_cleaned_df.csv', 'r', encoding='utf-8') as file:
     reader = csv.DictReader(file)
     
     for row in tqdm(reader, desc="Elaborando righe", unit="riga"):
-        # Estrai i valori necessari
-        datetime = extract_datetime(row['datetime'])
+        # Unisci la data e l'ora arrotondata
+        datetime = row['date'] + " " + row['rounded_time']
+        
+        # Estrai solo la parte utile della data e ora
+        datetime = extract_datetime(datetime)
+        
+        # Estrai gli altri valori necessari
         parcel = ','.join(map(str, eval(row['parcel'])))  # Trasforma la lista in stringa
         position = eval(row['position'])  # Converte la stringa in una lista
         user_id = row['address']  # Uso address come nome utente
@@ -31,7 +36,7 @@ with open('clean_decentraland.csv', 'r', encoding='utf-8') as file:
 
 
 ### CREAZIONE FILE JSON ###
-output_file_path = 'data_dict.json'
+output_file_path = 'carlo_data_dict.json'
 
 # Calcola il numero totale di timestamp da scrivere
 total_items = len(data_dict)

@@ -36,7 +36,7 @@ with open('carlo_cleaned_df.csv', 'r', encoding='utf-8') as file:
 
 
 ### CREAZIONE FILE JSON ###
-output_file_path = 'carlo_data_dict.json'
+output_file_path = 'data_dict.json'
 
 # Calcola il numero totale di timestamp da scrivere
 total_items = len(data_dict)

@@ -16,6 +16,11 @@ def calculate_distance(pos1, pos2):
 
 # FUNZIONE PER OTTENERE EDGE ###
 
+# Funzione per calcolare la distanza
+def calculate_distance(pos1, pos2):
+    return sqrt((pos2[0] - pos1[0])**2 + (pos2[1] - pos1[1])**2 + (pos2[2] - pos1[2])**2)
+
+# Funzione per ottenere gli edge ignorando i parcel
 def get_edges(data_dict):
     edges_dict = {}
 
@@ -31,21 +36,20 @@ def get_edges(data_dict):
         for time, parcels in timestamps.items():
             edges_tmp = []
 
-            # Per ogni parcel (dove sono presenti gli utenti)
+            # Raccogli tutti gli utenti di tutti i parcel in un'unica lista
+            all_users = []
             for parcel, data in parcels.items():
-                users = data["users"]
-                user_count = data["user_count"]
+                all_users.extend(data["users"])  # Aggiungi tutti gli utenti di quel parcel
 
-                # Se ci sono almeno due utenti, possiamo creare combinazioni di edges
-                if user_count > 1:
-                    # Crea tutte le combinazioni di coppie di utenti nello stesso parcel
-                    for user1, user2 in combinations(users, 2):
-                        pos1 = user1["position"]
-                        pos2 = user2["position"]
+            # Se ci sono almeno due utenti, calcola le combinazioni
+            if len(all_users) > 1:
+                for user1, user2 in combinations(all_users, 2):
+                    pos1 = user1["position"]
+                    pos2 = user2["position"]
 
-                        # Calcola la distanza tra i due utenti
-                        if calculate_distance(pos1, pos2) <= 10:
-                            edges_tmp.append([user1["id"], user2["id"]])
+                    # Calcola la distanza tra i due utenti
+                    if calculate_distance(pos1, pos2) <= 10:
+                        edges_tmp.append([user1["id"], user2["id"]])
 
             edges_dict[time] = edges_tmp
 

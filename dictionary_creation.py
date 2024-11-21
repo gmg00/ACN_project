@@ -36,24 +36,7 @@ with open('carlo_cleaned_df.csv', 'r', encoding='utf-8') as file:
 
 
 ### CREAZIONE FILE JSON ###
-output_file_path = 'data_dict.json'
+output_file_path = 'carlo_data_dict.json'
 
-# Calcola il numero totale di timestamp da scrivere
-total_items = len(data_dict)
-
-# Iniziamo scrivendo l'apertura del file JSON
 with open(output_file_path, 'w', encoding='utf-8') as json_file:
-    json_file.write("{\n")  
-
-    first_item = True  # Flag per gestire la scrittura progressiva
-
-    for idx, (datetime_key, parcels) in enumerate(tqdm(data_dict.items(), total=total_items, desc="Scrittura JSON", unit="timestamp")):
-        if not first_item:
-            json_file.write(",\n")  # Aggiungi una virgola prima di ogni nuovo blocco
-        first_item = False
-
-        json.dump({datetime_key: parcels}, json_file, ensure_ascii=False, indent=4)
-    
-    json_file.write("\n}")  
-
-print(f'File ultimato {output_file_path}')
+    json.dump(data_dict, json_file, ensure_ascii=False, indent=4)

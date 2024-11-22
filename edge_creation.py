@@ -16,10 +16,6 @@ def calculate_distance(pos1, pos2):
 
 # FUNZIONE PER OTTENERE EDGE ###
 
-# Funzione per calcolare la distanza
-def calculate_distance(pos1, pos2):
-    return sqrt((pos2[0] - pos1[0])**2 + (pos2[1] - pos1[1])**2 + (pos2[2] - pos1[2])**2)
-
 # Funzione per ottenere gli edge ignorando i parcel
 def get_edges(data_dict):
     edges_dict = {}

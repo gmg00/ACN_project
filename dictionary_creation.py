@@ -11,7 +11,7 @@ data_dict = defaultdict(lambda: defaultdict(lambda: {"users": [], "user_count": 
 def extract_datetime(datetime_str):
     return datetime_str[:16]  # Primo 16 caratteri (YYYY-MM-DD HH:MM)
 
-with open('carlo_cleaned_df.csv', 'r', encoding='utf-8') as file:
+with open('clean_df.csv', 'r', encoding='utf-8') as file:
     reader = csv.DictReader(file)
     
     for row in tqdm(reader, desc="Elaborando righe", unit="riga"):
@@ -36,7 +36,7 @@ with open('carlo_cleaned_df.csv', 'r', encoding='utf-8') as file:
 
 
 ### CREAZIONE FILE JSON ###
-output_file_path = 'carlo_data_dict.json'
+output_file_path = 'data_dict.json'
 
 with open(output_file_path, 'w', encoding='utf-8') as json_file:
     json.dump(data_dict, json_file, ensure_ascii=False, indent=4)

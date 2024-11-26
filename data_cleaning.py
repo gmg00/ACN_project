@@ -26,5 +26,17 @@ days_minutes_per_id.columns = ['id', 'days', 'minutes']
 selected_ids = days_minutes_per_id[(days_minutes_per_id['days']>5) & (days_minutes_per_id['minutes']>30)]['id'].tolist()
 
 new_df = df[df['id'].isin(selected_ids)]
-output_csv = 'cleaned_decentraland.csv'
-new_df.to_csv(output_csv, index=False)
+
+def are_coordinates_valid(pos):
+    parsed = ast.literal_eval(pos) if isinstance(pos, str) else pos
+    return all(isinstance(coord, (int, float)) for coord in parsed)
+
+invalid_coordinates = new_df[~new_df['position'].apply(are_coordinates_valid)]
+print(f"Numero di liste con coordinate non valide: {len(invalid_coordinates)}")
+
+indices_to_drop = invalid_coordinates.index
+
+df_cleaned = new_df.drop(indices_to_drop)
+
+output_csv = 'cleaned_df.csv'
+df_cleaned.to_csv(output_csv, index=False)

@@ -46,6 +46,6 @@ def aggregate_edges_with_normalized_weights(edges_file_path, output_file_path, w
         json.dump(final_edges, json_file, ensure_ascii=False, indent=4)
 
 edges_file_path = 'edges.json'
-output_file_path = 'normalized_edges_with_weights.json'
+output_file_path = 'edges_with_weights.json'
 
 aggregate_edges_with_normalized_weights(edges_file_path, output_file_path)

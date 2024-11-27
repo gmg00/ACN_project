@@ -80,7 +80,7 @@ def fetch_all_events_with_workers(addresses, api_key, output_dir, max_workers=5,
             time.sleep(delay)  # Optional: Delay tra i completamenti (puoi rimuoverlo)
 
 
-### CAMBIA CSV, CAMBIA API KEY E CREA CARTELLA TRANSACTION !!!! ###
+### CAMBIA CSV, CAMBIA API KEY E CREA CARTELLA TRANSACTIONS !!!! ###
 if __name__ == "__main__":
 
     dir_name = '' # Cartella dove tenete i dati

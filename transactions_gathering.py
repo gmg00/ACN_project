@@ -11,7 +11,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Semaphore
 from tqdm import tqdm  # Aggiungi tqdm per la barra di progresso
 
-
 # Define a semaphore to limit concurrent requests
 MAX_CONCURRENT_REQUESTS = 4  # Adjust based on API rate limits
 semaphore = Semaphore(MAX_CONCURRENT_REQUESTS)
@@ -70,7 +69,6 @@ def fetch_events_for_address(address, headers, output_dir, max_retries=5):
 
     return address, len(events)  # Return address and number of events
 
-
 def fetch_all_events_with_workers(addresses, api_key, output_dir, max_workers=5, delay=1):
     headers = {"X-API-KEY": api_key, "accept": "application/json"}
     
@@ -85,8 +83,7 @@ def fetch_all_events_with_workers(addresses, api_key, output_dir, max_workers=5,
             except Exception as e:
                 print(f"Error processing address: {e}")  # Log only errors
             
-            time.sleep(delay)  # Optional: Delay between completions (can be removed)
-
+            time.sleep(delay)  # Optional: Delay tra i completamenti (puoi rimuoverlo)
 
 
 ### CAMBIA CSV, CAMBIA API KEY E CREA CARTELLA TRANSACTIONS !!!! ###
@@ -101,7 +98,6 @@ if __name__ == "__main__":
     with open(f'{dir_name}{addresses_file_name}', 'r') as file:
         reader = csv.reader(file)
         addresses_list = [row[0] for row in reader]  # Aggiungi ogni indirizzo alla lista
-
 
 ### USO FUNZIONE ###
 fetch_all_events_with_workers(addresses_list, api_key, output_dir_name, max_workers=10, delay=2)

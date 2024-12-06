@@ -1,6 +1,7 @@
 import csv
 import requests
 import json
+import numpy as np
 from tqdm import tqdm 
 
 ### PRENDO TUTTE RISPOSTE API OPENSEA E METTO IN JSON ###
@@ -79,44 +80,45 @@ extract_addresses_with_errors_to_csv(INPUT_FILE, OUTPUT_FILE)
 def load_addresses_from_responses_json(filename):
     with open(filename, 'r') as file:
         data = json.load(file)
-        return set(data.keys())  # key sono gli address
+        return set(data.keys())  # Le chiavi del dizionario sono gli indirizzi
 
-def load_addresses_from_list_json(filename):
-    with open(filename, 'r') as file:
-        data = json.load(file)
-        if isinstance(data, list):
-            return set(data)  # lista con address
-        else:
-            raise ValueError("Il file non contiene una lista di indirizzi")
+# Funzione per caricare indirizzi dal file "non_existent_accounts.npy"
+def load_addresses_from_npy(filename):
+    data = np.load(filename, allow_pickle=True)  # Carica il file .npy
+    return set(data)  # Converte l'array NumPy in un set
 
+# Carica gli indirizzi dai due file
 inesistenti_addresses = load_addresses_from_responses_json('check_addresses_responses.json')
-non_existing_accounts_addresses = load_addresses_from_list_json('non_existent_accounts.json')
+non_existing_accounts_addresses = load_addresses_from_npy('non_existent_addresses.npy')
 
+# Calcola i confronti
 common_addresses = inesistenti_addresses & non_existing_accounts_addresses  # Intersezione
 unique_to_inesistenti = inesistenti_addresses - non_existing_accounts_addresses  # Solo in "check_addresses_responses.json"
-unique_to_non_existing = non_existing_accounts_addresses - inesistenti_addresses  # Solo in "non_existent_accounts.json"
+unique_to_non_existing = non_existing_accounts_addresses - inesistenti_addresses  # Solo in "non_existent_accounts.npy"
 different_addresses = inesistenti_addresses ^ non_existing_accounts_addresses  # Simmetrica (diversi)
 
+# Stampa i risultati
 print(f"\n--- RISULTATI ---")
 print(f"Numero di indirizzi comuni: {len(common_addresses)}")
 print(f"Numero di indirizzi unici in 'check_addresses_responses.json': {len(unique_to_inesistenti)}")
-print(f"Numero di indirizzi unici in 'non_existent_accounts.json': {len(unique_to_non_existing)}")
+print(f"Numero di indirizzi unici in 'non_existent_accounts.npy': {len(unique_to_non_existing)}")
 print(f"Numero di indirizzi diversi in totale: {len(different_addresses)}\n")
 
+# Stampa alcune liste
 print("--- Indirizzi Comuni ---")
-for address in list(common_addresses)[:10]:  
+for address in list(common_addresses)[:10]:  # Mostra i primi 10 indirizzi comuni
     print(address)
 if len(common_addresses) > 10:
     print("...")
 
 print("\n--- Indirizzi Unici a 'check_addresses_responses.json' ---")
-for address in list(unique_to_inesistenti)[:10]:  
+for address in list(unique_to_inesistenti)[:10]:  # Mostra i primi 10 indirizzi unici
     print(address)
 if len(unique_to_inesistenti) > 10:
     print("...")
 
-print("\n--- Indirizzi Unici a 'non_existent_accounts.json' ---")
-for address in list(unique_to_non_existing)[:10]: 
+print("\n--- Indirizzi Unici a 'non_existent_accounts.npy' ---")
+for address in list(unique_to_non_existing)[:10]:  # Mostra i primi 10 indirizzi unici
     print(address)
 if len(unique_to_non_existing) > 10:
     print("...")

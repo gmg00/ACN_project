@@ -5,11 +5,12 @@ import datetime
 import pytz
 from tqdm import tqdm 
 
+
 def resolve_conflicts_on_duplicates(df):
     tqdm.write("Risoluzione conflitti sui duplicati...")
-    conflicts = df.groupby(['id', 'date', 'rounded_time']).filter(lambda x: x['server'].nunique() > 1)
-    most_frequent_server = df.groupby('id')['server'].agg(lambda x: x.value_counts().idxmax())
-    conflicts_resolved = conflicts[conflicts.apply(lambda row: row['server'] == most_frequent_server[row['id']], axis=1)]
+    conflicts = df.groupby(['address', 'date', 'rounded_time']).filter(lambda x: x['server'].nunique() > 1)
+    most_frequent_server = df.groupby('address')['server'].agg(lambda x: x.value_counts().idxmax())
+    conflicts_resolved = conflicts[conflicts.apply(lambda row: row['server'] == most_frequent_server[row['address']], axis=1)]
     non_conflicts = df.drop(conflicts.index)
     resolved_df = pd.concat([non_conflicts, conflicts_resolved]).sort_index()
     return resolved_df
@@ -20,12 +21,46 @@ def are_coordinates_valid(pos):
     return all(isinstance(coord, (int, float)) for coord in parsed)
 
 
+def is_parcel_valid(parcel_str):
+    """
+    Checks if the parcel is valid by converting the string to a list and ensuring 
+    both elements are within the range [-150, 150].
+
+    Parameters:
+    - parcel_str (str): The parcel string to be validated.
+
+    Returns:
+    - bool: True if both elements of the parcel are within the range [-150, 150], False otherwise.
+    """
+    try:
+        # Convert the parcel string to a list
+        parcel = ast.literal_eval(parcel_str)
+        # Check if both elements are within the range [-150, 150]
+        return all(-150 <= coord <= 150 for coord in parcel)
+    except (ValueError, SyntaxError):
+        # Handle cases where the string is not a valid list or other errors
+        return False
+
+
 def process_files(directory, timezone='UTC'):
-    tqdm.write(f"Elaborazione dei file nella directory: {directory}...")
+    """
+    Process files in the specified directory, adding adjusted 'rounded_time' and 'date' columns.
+    Removes data for dates before 2024-03-22.
+
+    Parameters:
+    - directory (str): The path to the directory containing the files.
+    - timezone (str): The timezone to which the timestamps should be converted.
+
+    Returns:
+    - pd.DataFrame: The combined DataFrame with processed and adjusted time columns.
+    """
+
+    tqdm.write(f"Processing files in directory: {directory}...")
     all_files = [os.path.join(directory, file) for file in sorted(os.listdir(directory)) if file.isdigit()]
     data_frames = []
 
-    for file_path in tqdm(all_files, desc="Processamento file", unit="file"):
+    # Read and process each file
+    for file_path in tqdm(all_files, desc="Processing files", unit="file"):
         with open(file_path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
         
@@ -44,15 +79,28 @@ def process_files(directory, timezone='UTC'):
             df = pd.concat(temp_data, ignore_index=True)
             data_frames.append(df)
 
-    tqdm.write("Combinazione di tutti i DataFrame...")
+    tqdm.write("Combining all DataFrames...")
     combined_df = pd.concat(data_frames, ignore_index=True)
+    combined_df.drop_duplicates(inplace=True)
 
-    tqdm.write("Aggiunta di colonne utili per la pulizia...")
+    tqdm.write("Adding useful columns for cleaning...")
     combined_df['datetime'] = pd.to_datetime(combined_df['lastPing'], unit='ms').dt.tz_localize('UTC').dt.tz_convert(timezone)
     combined_df['date'] = combined_df['datetime'].dt.date
-    combined_df['rounded_time'] = combined_df['datetime'].dt.round('min').dt.strftime('%H:%M')
+    combined_df['rounded_time'] = combined_df['datetime'].dt.round('min')
+
+    # Adjust for times close to midnight (23:59:50 -> 00:00:00 of next day)
+    rollover_mask = (combined_df['rounded_time'].dt.time == datetime.time(0, 0)) & (
+        combined_df['datetime'].dt.hour == 23) & (combined_df['datetime'].dt.minute == 59)
+
+    combined_df.loc[rollover_mask, 'date'] += pd.Timedelta(days=1)
+    combined_df['rounded_time'] = combined_df['rounded_time'].dt.strftime('%H:%M')
+
+    # Remove data for dates before 2024-03-22
+    combined_df = combined_df[combined_df['date'] >= datetime.date(2024, 3, 22)]
+    combined_df.drop(columns=['id', 'lastPing', 'datetime'], inplace=True)
 
     return combined_df
+
 
 def clean_data(df):
     tqdm.write("Inizio della pulizia dei dati...")
@@ -60,24 +108,26 @@ def clean_data(df):
     # Risolvi conflitti sui duplicati
     tqdm.write("Risoluzione dei conflitti sui duplicati...")
     df = resolve_conflicts_on_duplicates(df)
+    df.drop(columns=['server'], inplace=True)
 
     # Calcola giorni unici e minuti per ogni id
     tqdm.write("Calcolo giorni unici e minuti per ID...")
-    unique_days_per_id = df.groupby('id')['date'].nunique().reset_index()
-    minutes_per_id = df.groupby('id')['rounded_time'].nunique().reset_index()
-    days_minutes_per_id = pd.merge(unique_days_per_id, minutes_per_id, on='id')
-    days_minutes_per_id.columns = ['id', 'days', 'minutes']
+    unique_days_per_id = df.groupby('address')['date'].nunique().reset_index()
+    minutes_per_id = df.groupby('address')['rounded_time'].nunique().reset_index()
+    days_minutes_per_id = pd.merge(unique_days_per_id, minutes_per_id, on='address')
+    days_minutes_per_id.columns = ['address', 'days', 'minutes']
 
     # Filtra per id con >5 giorni e >30 minuti
     tqdm.write("Filtraggio ID con più di 5 giorni e 30 minuti...")
-    selected_ids = days_minutes_per_id[(days_minutes_per_id['days'] > 5) & (days_minutes_per_id['minutes'] > 30)]['id'].tolist()
-    filtered_df = df[df['id'].isin(selected_ids)]
+    selected_ids = days_minutes_per_id[(days_minutes_per_id['days'] > 5) & (days_minutes_per_id['minutes'] > 30)]['address'].tolist()
+    filtered_df = df[df['address'].isin(selected_ids)]
 
     # Rimuovi righe con coordinate non valide
     tqdm.write("Validazione delle coordinate...")
     invalid_coordinates = filtered_df[~filtered_df['position'].apply(are_coordinates_valid)]
     tqdm.write(f"Numero di liste con coordinate non valide: {len(invalid_coordinates)}")
     cleaned_df = filtered_df.drop(invalid_coordinates.index)
+    cleaned_df = cleaned_df[cleaned_df['parcel'].apply(is_parcel_valid)]
 
     return cleaned_df
 

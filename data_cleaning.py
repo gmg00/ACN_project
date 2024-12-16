@@ -17,21 +17,14 @@ def resolve_conflicts_on_duplicates(df):
 
 
 def are_coordinates_valid(pos):
-    parsed = ast.literal_eval(pos) if isinstance(pos, str) else pos
-    return all(isinstance(coord, (int, float)) for coord in parsed)
+    try:
+        parsed = ast.literal_eval(pos) if isinstance(pos, str) else pos
+        return all(isinstance(coord, (int, float)) for coord in parsed)
+    except (ValueError, SyntaxError, TypeError):
+        return False
 
 
 def is_parcel_valid(parcel_str):
-    """
-    Checks if the parcel is valid by converting the string to a list and ensuring 
-    both elements are within the range [-150, 150].
-
-    Parameters:
-    - parcel_str (str): The parcel string to be validated.
-
-    Returns:
-    - bool: True if both elements of the parcel are within the range [-150, 150], False otherwise.
-    """
     try:
         # Convert the parcel string to a list
         parcel = ast.literal_eval(parcel_str)
@@ -43,18 +36,6 @@ def is_parcel_valid(parcel_str):
 
 
 def process_files(directory, timezone='UTC'):
-    """
-    Process files in the specified directory, adding adjusted 'rounded_time' and 'date' columns.
-    Removes data for dates before 2024-03-22.
-
-    Parameters:
-    - directory (str): The path to the directory containing the files.
-    - timezone (str): The timezone to which the timestamps should be converted.
-
-    Returns:
-    - pd.DataFrame: The combined DataFrame with processed and adjusted time columns.
-    """
-
     tqdm.write(f"Processing files in directory: {directory}...")
     all_files = [os.path.join(directory, file) for file in sorted(os.listdir(directory)) if file.isdigit()]
     data_frames = []

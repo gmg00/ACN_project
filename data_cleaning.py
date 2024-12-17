@@ -36,6 +36,18 @@ def is_parcel_valid(parcel_str):
 
 
 def process_files(directory, timezone='UTC'):
+    """
+    Process files in the specified directory, adding adjusted 'rounded_time' and 'date' columns.
+    Removes data for dates before 2024-03-22.
+
+    Parameters:
+    - directory (str): The path to the directory containing the files.
+    - timezone (str): The timezone to which the timestamps should be converted.
+
+    Returns:
+    - pd.DataFrame: The combined DataFrame with processed and adjusted time columns.
+    """
+
     tqdm.write(f"Processing files in directory: {directory}...")
     all_files = [os.path.join(directory, file) for file in sorted(os.listdir(directory)) if file.isdigit()]
     data_frames = []
@@ -62,6 +74,12 @@ def process_files(directory, timezone='UTC'):
 
     tqdm.write("Combining all DataFrames...")
     combined_df = pd.concat(data_frames, ignore_index=True)
+
+    # Convert unhashable list-like columns to tuples for drop_duplicates
+    for col in combined_df.columns:
+        if combined_df[col].apply(lambda x: isinstance(x, list)).any():
+            combined_df[col] = combined_df[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
+
     combined_df.drop_duplicates(inplace=True)
 
     tqdm.write("Adding useful columns for cleaning...")
@@ -81,6 +99,7 @@ def process_files(directory, timezone='UTC'):
     combined_df.drop(columns=['id', 'lastPing', 'datetime'], inplace=True)
 
     return combined_df
+
 
 
 def clean_data(df):

@@ -27,7 +27,7 @@ def are_coordinates_valid(pos):
 def is_parcel_valid(parcel_str):
     try:
         # Convert the parcel string to a list
-        parcel = ast.literal_eval(parcel_str)
+        parcel = ast.literal_eval(parcel_str) if isinstance(parcel_str, str) else parcel_str
         # Check if both elements are within the range [-150, 150]
         return all(-150 <= coord <= 150 for coord in parcel)
     except (ValueError, SyntaxError):

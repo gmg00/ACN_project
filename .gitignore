@@ -1,3 +1,4 @@
 data/*
 notebooks/personal_notebooks/*
 !.gitkeep
+.venv/*

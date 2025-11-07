@@ -10,6 +10,7 @@ import time
 import numpy as np
 import os
 import csv
+from scipy.stats import spearmanr  # >>> NEW
 
 # --- Fix per NumPy >= 2.0 e NetworkX ---
 if not hasattr(np, "float_"):
@@ -18,7 +19,6 @@ if not hasattr(np, "float_"):
 
 Edge = Tuple[Hashable, Hashable]
 
-
 # =========================
 # Config e risultati
 # =========================
@@ -26,9 +26,9 @@ Edge = Tuple[Hashable, Hashable]
 @dataclass(frozen=True)
 class RewireConfig:
     """Configurazione dell'algoritmo di rewiring."""
-    nswap: int = 10_000         # numero di double-edge-swap da tentare
-    max_tries: int = 100_000    # limite massimo di tentativi
-    log_every: Optional[int] = 2_000  # log periodico
+    nswap: int = 10_000
+    max_tries: int = 100_000
+    log_every: Optional[int] = 2_000
 
 
 @dataclass
@@ -55,6 +55,17 @@ def _edge_set_undirected(G: nx.Graph) -> Set[Edge]:
     return out
 
 
+def _edge_weight_dict(G: nx.Graph) -> dict[Edge, float]:
+    """Ritorna un dizionario (edge -> peso), con edge come (min,max)."""
+    weights = {}
+    for u, v, data in G.edges(data=True):
+        if u == v:
+            continue
+        a, b = (u, v) if u < v else (v, u)
+        weights[(a, b)] = data.get("weight", 1.0)
+    return weights
+
+
 # =========================
 # Core: rewiring + shuffle pesi
 # =========================
@@ -64,20 +75,14 @@ def rewire_preserving_degree_and_randomizing_weights(
     cfg: RewireConfig = RewireConfig(),
     seed: Optional[int] = None
 ) -> RewireResult:
-    """
-    Esegue double-edge swaps preservando i gradi dei nodi e
-    randomizzando i pesi sugli archi.
-    """
+    """Esegue double-edge swaps preservando i gradi e randomizzando i pesi."""
     rng = random.Random(seed)
     H = G.copy()
 
-    # --- Estrai i pesi originali ---
     original_weights = [data.get("weight", 1.0) for _, _, data in H.edges(data=True)]
 
-    # --- Rewiring topologico ---
     swaps_done = nx.double_edge_swap(H, nswap=cfg.nswap, max_tries=cfg.max_tries, seed=seed)
 
-    # --- Randomizza i pesi ---
     rng.shuffle(original_weights)
     for i, (u, v) in enumerate(H.edges()):
         H[u][v]["weight"] = original_weights[i]
@@ -98,12 +103,13 @@ if __name__ == "__main__":
     LAYER3_GEXF = "/Users/HP/Desktop/layer3.gexf"
     OUT_DIR = '/Users/HP/Desktop/UNI/LM_1/ACN/ACN_project/data/'
     OUTPUT_NPY = "edge_overlap_L1_Null3.npy"
+    OUTPUT_CORR_NPY = "spearman_corr_L1_Null3.npy"
 
     N_MODELS = 5000
 
     cfg = RewireConfig(
-        nswap=10_000,
-        max_tries=100_000,
+        nswap=50_000,
+        max_tries=500_000,
         log_every=None,
     )
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -118,17 +124,34 @@ if __name__ == "__main__":
 
     E1 = _edge_set_undirected(layer1)
     lenE1 = len(E1)
+    weights1 = _edge_weight_dict(layer1)
 
     overlaps = np.zeros(N_MODELS)
+    correlations = np.zeros(N_MODELS)  # >>> NEW
     rows = []
 
     t0 = time.time()
     for i in range(N_MODELS):
         res = rewire_preserving_degree_and_randomizing_weights(layer3.copy(), cfg, seed=i)
         EN = _edge_set_undirected(res.graph)
+        weightsN = _edge_weight_dict(res.graph)
+
+        # --- Overlap ---
         overlap = len(E1 & EN) / min(lenE1, len(EN)) if min(lenE1, len(EN)) > 0 else 0.0
         overlaps[i] = overlap
-        rows.append([i, overlap])
+
+        # --- Correlazione di Spearman ---
+        common_edges = E1 & EN
+        if len(common_edges) > 1:
+            w1 = [weights1[e] for e in common_edges]
+            w2 = [weightsN[e] for e in common_edges]
+            corr, _ = spearmanr(w1, w2)
+            correlation = corr if not np.isnan(corr) else 0.0
+        else:
+            correlation = 0.0
+        correlations[i] = correlation
+
+        rows.append([i, overlap, correlation])
 
         frac = (i + 1) / N_MODELS
         bar = "█" * int(30 * frac) + "·" * (30 - int(30 * frac))
@@ -140,4 +163,9 @@ if __name__ == "__main__":
 
     npy_path = os.path.join(OUT_DIR, OUTPUT_NPY)
     np.save(npy_path, overlaps)
-    print(f"Saved NPY -> {npy_path}")
+    print(f"Saved overlaps -> {npy_path}")
+
+    corr_path = os.path.join(OUT_DIR, OUTPUT_CORR_NPY)
+    np.save(corr_path, correlations)
+    print(f"Saved correlations -> {corr_path}")
+

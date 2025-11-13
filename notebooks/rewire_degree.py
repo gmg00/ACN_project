@@ -99,11 +99,11 @@ def rewire_preserving_degree_and_randomizing_weights(
 
 if __name__ == "__main__":
     # >>>>>>> CONFIGURAZIONE <<<<<<<
-    LAYER1_GEXF = "/Users/HP/Desktop/layer1.gexf"
+    LAYER1_GEXF = "/Users/HP/Desktop/layer2.gexf"
     LAYER3_GEXF = "/Users/HP/Desktop/layer3.gexf"
     OUT_DIR = '/Users/HP/Desktop/UNI/LM_1/ACN/ACN_project/data/'
-    OUTPUT_NPY = "edge_overlap_L1_Null3.npy"
-    OUTPUT_CORR_NPY = "spearman_corr_L1_Null3.npy"
+    OUTPUT_NPY = "edge_overlap_L2_Null3.npy"
+    OUTPUT_CORR_NPY = "spearman_corr_L2_Null3.npy"
 
     N_MODELS = 5000
 
